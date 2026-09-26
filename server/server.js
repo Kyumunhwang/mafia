@@ -60,15 +60,36 @@ function getNetworkIpAddresses() {
 const { bestIp, validIps } = getNetworkIpAddresses();
 console.log(`[Network] Detected Primary LAN IP: ${bestIp}`);
 
-// Info endpoint for client QR generation
+// Detect public host or local network info
+const distPath = path.join(process.cwd(), 'dist');
+
+// Serve static frontend assets from Vite build output
+app.use(express.static(distPath));
+
+// Info endpoint for client QR generation & network discovery
 app.get('/api/info', (req, res) => {
   const { bestIp, validIps } = getNetworkIpAddresses();
+  const host = req.headers.host;
+  const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+  const isCloud = process.env.RENDER || (host && !host.includes('localhost') && !host.includes('127.0.0.1'));
+
   res.json({
     localIp: bestIp,
+    publicUrl: isCloud ? `${protocol}://${host}` : `http://${bestIp}:3005`,
     availableIps: validIps.map(v => ({ name: v.name, ip: v.address })),
-    clientPort: 3005,
+    clientPort: isCloud ? PORT : 3005,
     serverPort: PORT
   });
+});
+
+// SPA fallback: any non-API route serves index.html
+app.get('*', (req, res) => {
+  const indexPath = path.join(distPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Application build not found. Please run npm run build:mafia');
+  }
 });
 
 // Rooms storage in-memory + local JSON backup

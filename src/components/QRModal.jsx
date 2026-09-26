@@ -7,10 +7,13 @@ export const QRModal = ({ isOpen, onClose }) => {
   const canvasRef = useRef(null);
   const [selectedIp, setSelectedIp] = useState('');
 
+  const isCloud = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
   const defaultIp = serverInfo.localIp || window.location.hostname;
   const currentIp = selectedIp || defaultIp;
   const clientPort = serverInfo.clientPort || 3005;
-  const joinUrl = `http://${currentIp}:${clientPort}?room=${roomState?.roomCode || ''}`;
+  const joinUrl = isCloud
+    ? `${window.location.origin}?room=${roomState?.roomCode || ''}`
+    : `http://${currentIp}:${clientPort}?room=${roomState?.roomCode || ''}`;
 
   useEffect(() => {
     if (serverInfo.localIp && !selectedIp) {
